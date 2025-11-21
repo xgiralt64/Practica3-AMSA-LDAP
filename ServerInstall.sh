@@ -283,6 +283,7 @@ objectClass: simpleSecurityObject
 cn: osproxy
 userPassword: $HASH
 description: OS proxy for resolving UIDs/GIDs
+
 EOL
 
 groups=("programadors" "dissenyadors")
@@ -298,6 +299,7 @@ dn: cn=${groups[$j]},ou=groups,$BASE
 objectClass: posixGroup
 cn: ${groups[$j]}
 gidNumber: ${gids[$j]}
+
 EOL
 done
 
@@ -314,16 +316,23 @@ uidNumber: ${uids[$j]}
 gidNumber: ${uids[$j]}
 homeDirectory: /home/${users[$j]}
 loginShell: /bin/sh
+
 EOL
 done
 
-log "Carregant usuaris i grups..."
 
+log "Carregant usuaris i grups..."
+#AIXO TAMBE FALLA PERQUE FALTA NEWLINE
 ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/users.ldif >>"$LOGFILE" 2>&1
 
 
 PATH_PKI="/etc/pki/tls"
-HOSTNAME="$(hostname -f)"
+
+IP=$(curl ifconfig.me)
+HOSTNAME=$(dig -x $IP +short)
+
+echo $IP
+echo $HOSTNAME
 
 log "Generant certificats TLS..."
 
@@ -354,16 +363,22 @@ olcTLSCertificateFile: $PATH_PKI/ldapcert.pem
 EOL
 
 
-log "Aplicat TLS a cn=config..."
+log "Aplicant TLS a cn=config..."
+
+
+
+#AQUI FALLA ldap_modify: Other (e.g., implementation specific) error (80)
+#Preguntar si la part de copieu el contingut del fitxer /etc/pki/tls/cacerts.pem del servidor LDAP al client i deseu-lo com a /etc/pki/tls/cacert.crt.
+#Ha de ser automatica o no cal 
 
 ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/add-tls.ldif >>"$LOGFILE" 2>&1
 
 
 
-log "Configuració post-instal·lació completada."
+
+
 
 
 log "Instal·lació finalitzada."
 echo "Log a: $LOGFILE"
-echo "Comprovacions:"
 
