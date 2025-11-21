@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Stack LDAP Client
+
+Parameters:
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Selecciona una clau SSH existent
+
+Resources:
+
+  ImportedVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !ImportValue LDAP-VPC-ID
+    DeletionPolicy: Retain
+
+  LDAPClientSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: LDAP Client SG
+      VpcId: !ImportValue LDAP-VPC-ID
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 22, ToPort: 22, CidrIp: 0.0.0.0/0 }
+
+  LDAPClientInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-04ff98ccbfa41c9ad
+      InstanceType: t3.micro
+      KeyName: !Ref KeyName
+      SubnetId: !ImportValue LDAP-SUBNET-ID
+      SecurityGroupIds:
+        - !Ref LDAPClientSG
+      Tags:
+        - Key: Name
+          Value: LDAP Client
+
+Outputs:
+  LDAPClientPublicIP:
+    Value: !GetAtt LDAPClientInstance.PublicIp
+    Description: IP pública del client

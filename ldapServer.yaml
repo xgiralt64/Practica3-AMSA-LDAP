@@ -1,0 +1,110 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Stack LDAP Server
+
+Parameters:
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Selecciona una clau SSH existent
+
+Resources:
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.1.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.1.1.0/24
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  RouteToInternet:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref RouteTable
+
+  LDAPServerSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: LDAP Server SG
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 22,  ToPort: 22,  CidrIp: 0.0.0.0/0 }
+        - { IpProtocol: tcp, FromPort: 80,  ToPort: 80,  CidrIp: 0.0.0.0/0 }
+        - { IpProtocol: tcp, FromPort: 389, ToPort: 389, CidrIp: 0.0.0.0/0 }
+        - { IpProtocol: tcp, FromPort: 636, ToPort: 636, CidrIp: 0.0.0.0/0 }
+
+  LDAPServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-04ff98ccbfa41c9ad
+      InstanceType: t3.micro
+      KeyName: !Ref KeyName
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds: [!Ref LDAPServerSG]
+      Tags:
+        - Key: Name
+          Value: LDAP Server
+
+Outputs:
+  LDAPServerPublicIP:
+    Description: IP pública
+    Value: !GetAtt LDAPServerInstance.PublicIp
+
+  ExportVPCId:
+    Value: !Ref VPC
+    Export: { Name: LDAP-VPC-ID }
+
+  ExportSubnetId:
+    Value: !Ref PublicSubnet
+    Export: { Name: LDAP-SUBNET-ID }
+
+  ExportServerSG:
+    Value: !Ref LDAPServerSG
+    Export: { Name: LDAP-SERVER-SG }
+
+UserData:
+  Fn::Base64: !Sub |
+    #!/bin/bash
+    set -e
+
+    yum update -y
+
+    yum install -y git curl wget
+
+    #Descarrego l'script del meu git
+    curl -o /root/ServerInstall.sh https://raw.githubusercontent.com/xgiralt64/Practica3-AMSA-LDAP/refs/heads/main/ServerInstall.sh
+    chmod +x /root/ServerInstall.sh
+
+    #I l'executo
+    /root/ServerInstall.sh
+
