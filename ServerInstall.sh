@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LOGFILE="/var/log/openldap-install.log"
+LOGFILE="/var/log/automatitzacio.log"
 
 mkdir -p /var/log
 touch "$LOGFILE"

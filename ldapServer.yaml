@@ -65,7 +65,7 @@ Resources:
   LDAPServerInstance:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: ami-04ff98ccbfa41c9ad
+      ImageId: ami-0fa3fe0fa7920f68e
       InstanceType: t3.micro
       KeyName: !Ref KeyName
       SubnetId: !Ref PublicSubnet
