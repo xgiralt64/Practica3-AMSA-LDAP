@@ -92,19 +92,31 @@ Outputs:
     Value: !Ref LDAPServerSG
     Export: { Name: LDAP-SERVER-SG }
 
-UserData:
-  Fn::Base64: !Sub |
-    #!/bin/bash
-    set -e
 
-    yum update -y
+LDAPServerInstance:
+  Type: AWS::EC2::Instance
+  Properties:
+    ImageId: ami-04ff98ccbfa41c9ad
+    InstanceType: t3.micro
+    KeyName: !Ref KeyName
+    SubnetId: !Ref PublicSubnet
+    SecurityGroupIds:
+      - !Ref LDAPServerSG
+    Tags:
+      - Key: Name
+        Value: LDAP Server
 
-    yum install -y git curl wget
+    UserData:
+      Fn::Base64: !Sub |
+        #!/bin/bash
+        set -e
 
-    #Descarrego l'script del meu git
-    curl -o /root/ServerInstall.sh https://raw.githubusercontent.com/xgiralt64/Practica3-AMSA-LDAP/refs/heads/main/ServerInstall.sh
-    chmod +x /root/ServerInstall.sh
+        yum update -y
+        yum install -y git curl wget
 
-    #I l'executo
-    /root/ServerInstall.sh
+        # Descarrego l'script del meu git
+        curl -o /root/ServerInstall.sh https://raw.githubusercontent.com/xgiralt64/Practica3-AMSA-LDAP/refs/heads/main/ServerInstall.sh
+        chmod +x /root/ServerInstall.sh
 
+        # I l'executo
+        /root/ServerInstall.sh
