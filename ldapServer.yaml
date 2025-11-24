@@ -77,19 +77,20 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
+          exec > /home/ec2-user/user-data.log 2>&1
+
           set -xe
 
           yum update -y
 
-          # Instal·lar git i ansible
           yum install -y git ansible
 
-          # Executar el playbook des del repositori
           sudo ansible-pull \
             -U https://github.com/xgiralt64/Practica3-AMSA-LDAP.git \
             -d /opt/ansible \
             -i localhost \
-            server.yml > /home/ec2-user/ansible-pull.log 2>&1
+            server.yml
+
 
 
 
