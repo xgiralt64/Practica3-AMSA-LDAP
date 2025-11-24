@@ -468,6 +468,7 @@
       dnf:
         name: /tmp/ldap-account-manager-9.0.RC1-0.fedora.1.noarch.rpm
         state: present
+        disable_gpg_check: yes
 
 
     - name: Python HTTP Server per passar el certificat al client
