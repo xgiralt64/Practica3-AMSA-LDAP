@@ -105,12 +105,12 @@ Outputs:
 
   ExportVPCId:
     Value: !Ref VPC
-    Export: { Name: LDAP-VPC-ID }
+    Export: { Name: LDAP-VPC-ID1 }
 
   ExportSubnetId:
     Value: !Ref PublicSubnet
-    Export: { Name: LDAP-SUBNET-ID }
+    Export: { Name: LDAP-SUBNET-ID1 }
 
   ExportClientSG:
     Value: !Ref LDAPClientSG
-    Export: { Name: LDAP-CLIENT-SG }
+    Export: { Name: LDAP-CLIENT-SG1 }

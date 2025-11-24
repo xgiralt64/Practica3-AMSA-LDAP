@@ -5,18 +5,7 @@
   vars:
     PASSWORD: "1234"
     BASE: "dc=amsa,dc=udl,dc=cat"
-    groups:
-      - name: "programadors"
-        gid: 5000
-      - name: "dissenyadors"
-        gid: 5001
-    users:
-      - name: "ramon"
-        sn: "mateo"
-        uid: 4000
-      - name: "manel"
-        sn: "lopez"
-        uid: 4001
+
     PATH_PKI: "/etc/pki/tls"
     country: "ES"
     state: "Spain"
