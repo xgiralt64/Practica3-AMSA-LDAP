@@ -1,12 +1,30 @@
 ---
-- name: Configuració Server
-  become: yes
+- name: Configuració completa del servidor LDAP
   hosts: localhost
+  become: yes
   vars:
     PASSWORD: "1234"
     BASE: "dc=amsa,dc=udl,dc=cat"
-
-
+    openldap_ver: "2.6.3"
+    PATH_PKI: "/etc/pki/tls"
+    country: "ES"
+    state: "Spain"
+    locality: "Igualada"
+    organization: "UdL"
+    organizationalunit: "IT"
+    email: "admin@udl.cat"
+    groups:
+      - name: "programadors"
+        gid: 5000
+      - name: "dissenyadors"
+        gid: 5001
+    users:
+      - name: "ramon"
+        sn: "mateo"
+        uid: 4000
+      - name: "manel"
+        sn: "lopez"
+        uid: 4001
 
   tasks:
     - name: Actualitzar repositoris
@@ -16,26 +34,24 @@
 
     - name: Instalar paquets necessaris
       dnf:
-          name:
-            - cyrus-sasl-devel
-            - make
-            - libtool
-            - autoconf
-            - libtool-ltdl-devel
-            - openssl-devel
-            - libdb-devel
-            - tar
-            - gcc
-            - perl
-            - perl-devel
-            - wget
-            - vim
-          state: present
-          update_cache: yes
-    
-    - name: Instalar OpenLDAP
-      vars:
-        openldap_ver: "2.6.3"
+        name:
+          - cyrus-sasl-devel
+          - make
+          - libtool
+          - autoconf
+          - libtool-ltdl-devel
+          - openssl-devel
+          - libdb-devel
+          - tar
+          - gcc
+          - perl
+          - perl-devel
+          - wget
+          - vim
+        state: present
+        update_cache: yes
+
+    - name: Instal·lar OpenLDAP
       shell: |
         wget ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/openldap-{{ openldap_ver }}.tgz
         tar xzf openldap-{{ openldap_ver }}.tgz
@@ -83,13 +99,6 @@
         - /var/lib/openldap
         - /etc/openldap/slapd.d
 
-    - name: Assignar propietari al directori /var/lib/openldap
-      file:
-        path: /var/lib/openldap
-        owner: ldap
-        group: ldap
-        state: directory
-
     - name: Assignar propietari i permisos a /etc/openldap/slapd.conf
       file:
         path: /etc/openldap/slapd.conf
@@ -125,17 +134,15 @@
       systemd:
         daemon_reload: yes
 
-    - name: Habilitar el servei slapd
+    - name: Habilitar i iniciar el servei slapd
       systemd:
         name: slapd
         enabled: yes
-    
+        state: started
+
     - name: Generar hash SSHA512 de la contrasenya
       command: >
-        slappasswd -h "{SSHA512}"
-        -o module-load=pw-sha2.la
-        -o module-path=/usr/local/libexec/openldap
-        -s {{ PASSWORD }}
+        slappasswd -h "{SSHA512}" -o module-load=pw-sha2.la -o module-path=/usr/local/libexec/openldap -s {{ PASSWORD }}
       register: ldap_hash
       changed_when: true
 
@@ -151,52 +158,40 @@
           cn: config
           olcArgsFile: /var/lib/openldap/slapd.args
           olcPidFile: /var/lib/openldap/slapd.pid
-          olcTLSCipherSuite: TLSv1.2:HIGH:\!aNULL:\!eNULL
+          olcTLSCipherSuite: TLSv1.2:HIGH:!aNULL:!eNULL
           olcTLSProtocolMin: 3.3
-
           dn: cn=schema,cn=config
           objectClass: olcSchemaConfig
           cn: schema
-
           dn: cn=module,cn=config
           objectClass: olcModuleList
           cn: module
           olcModulepath: /usr/libexec/openldap
           olcModuleload: back_mdb.la
-
           dn: cn=module,cn=config
           objectClass: olcModuleList
           cn: module
           olcModulepath: /usr/local/libexec/openldap
           olcModuleload: pw-sha2.la
-
           include: file:///etc/openldap/schema/core.ldif
           include: file:///etc/openldap/schema/cosine.ldif
           include: file:///etc/openldap/schema/nis.ldif
           include: file:///etc/openldap/schema/inetorgperson.ldif
-
           dn: olcDatabase=frontend,cn=config
           objectClass: olcDatabaseConfig
           objectClass: olcFrontendConfig
           olcDatabase: frontend
           olcPasswordHash: {{ ldap_hash.stdout }}
           olcAccess: to dn.base="cn=Subschema" by * read
-          olcAccess: to *
-            by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage
-            by * none
-
+          olcAccess: to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage by * none
           dn: olcDatabase=config,cn=config
           objectClass: olcDatabaseConfig
           olcDatabase: config
           olcRootDN: cn=config
-          olcAccess: to *
-            by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage
-            by * none
+          olcAccess: to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage by * none
 
     - name: Importar slapd.ldif a slapd.d
-      command: >
-        slapadd -n 0 -F /etc/openldap/slapd.d
-        -l /etc/openldap/slapd.ldif
+      command: slapadd -n 0 -F /etc/openldap/slapd.d -l /etc/openldap/slapd.ldif
       args:
         chdir: /etc/openldap
       register: slapadd_result
@@ -208,13 +203,6 @@
         owner: ldap
         group: ldap
         recurse: yes
-    
-    - name: Activar i iniciar slapd
-      systemd:
-        name: slapd
-        enabled: yes
-        state: started
-        daemon_reload: yes
 
     - name: Crear rootdn.ldif
       copy:
@@ -251,95 +239,46 @@
             by users read
             by * none
 
-
-
     - name: Importar base de dades MDB a cn=config
-      command: >
-        ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/rootdn.ldif
+      command: ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/rootdn.ldif
       register: ldapadd_result
       changed_when: true
 
     - name: Crear fitxer basedn.ldif
       copy:
         dest: /tmp/basedn.ldif
-        content: |
-          dn: dc=amsa,dc=udl,dc=cat
-          objectClass: dcObject
-          objectClass: organization
-          objectClass: top
-          o: AMSA
-          dc: amsa
-
-          dn: ou=groups,dc=amsa,dc=udl,dc=cat
-          objectClass: organizationalUnit
-          objectClass: top
-          ou: groups
-
-          dn: ou=users,dc=amsa,dc=udl,dc=cat
-          objectClass: organizationalUnit
-          objectClass: top
-          ou: users
-
-          dn: ou=system,dc=amsa,dc=udl,dc=cat
-          objectClass: organizationalUnit
-          objectClass: top
-          ou: system
         owner: root
         group: root
         mode: '0644'
-    
-    
-- name: Configurar LDAP i TLS
-  hosts: localhost
-  become: yes
-  vars:
-    BASE: "dc=amsa,dc=udl,dc=cat"
-    groups:
-      - name: "programadors"
-        gid: 5000
-      - name: "dissenyadors"
-        gid: 5001
-    users:
-      - name: "ramon"
-        sn: "mateo"
-        uid: 4000
-      - name: "manel"
-        sn: "lopez"
-        uid: 4001
-    PATH_PKI: "/etc/pki/tls"
-    country: "ES"
-    state: "Spain"
-    locality: "Igualada"
-    organization: "UdL"
-    organizationalunit: "IT"
-    email: "admin@udl.cat"
+        content: |
+          dn: dc=amsa,dc=udl,dc=cat
+            objectClass: dcObject
+            objectClass: organization
+            objectClass: top
+            o: AMSA
+            dc: amsa
+          dn: ou=groups,dc=amsa,dc=udl,dc=cat
+            objectClass: organizationalUnit
+            objectClass: top
+            ou: groups
+          dn: ou=users,dc=amsa,dc=udl,dc=cat
+            objectClass: organizationalUnit
+            objectClass: top
+            ou: users
+          dn: ou=system,dc=amsa,dc=udl,dc=cat
+            objectClass: organizationalUnit
+            objectClass: top
+            ou: system
 
-  tasks:
-    - name: Crear fitxer users.ldif
+    - name: Crear fitxer users.ldif amb grups i usuaris
       copy:
         dest: /tmp/users.ldif
         content: |
-          dn: cn=osproxy,ou=system,{{ BASE }}
-          objectClass: organizationalRole
-          objectClass: simpleSecurityObject
-          cn: osproxy
-          userPassword: {{ ldap_hash.stdout }}
-          description: OS proxy for resolving UIDs/GIDs
-
-          dn: ou=groups,{{ BASE }}
-          objectClass: posixGroup
-          ou: groups
-
-          dn: ou=users,{{ BASE }}
-          objectClass: posixGroup
-          ou: users
-
           {% for g in groups %}
           dn: cn={{ g.name }},ou=groups,{{ BASE }}
           objectClass: posixGroup
           cn: {{ g.name }}
           gidNumber: {{ g.gid }}
-
           {% endfor %}
 
           {% for u in users %}
@@ -353,7 +292,6 @@
           gidNumber: {{ u.uid }}
           homeDirectory: /home/{{ u.name }}
           loginShell: /bin/sh
-
           {% endfor %}
 
     - name: Carregar users.ldif a la base de dades
@@ -370,11 +308,7 @@
 
     - name: Crear certificat i clau amb openssl
       command: >
-        openssl req -days 500 -newkey rsa:4096
-        -keyout "{{ PATH_PKI }}/ldapkey.pem"
-        -nodes -sha256 -x509
-        -out "{{ PATH_PKI }}/ldapcert.pem"
-        -subj "/C={{ country }}/ST={{ state }}/L={{ locality }}/O={{ organization }}/OU={{ organizationalunit }}/CN={{ commonname }}/emailAddress={{ email }}"
+        openssl req -days 500 -newkey rsa:4096 -keyout "{{ PATH_PKI }}/ldapkey.pem" -nodes -sha256 -x509 -out "{{ PATH_PKI }}/ldapcert.pem" -subj "/C={{ country }}/ST={{ state }}/L={{ locality }}/O={{ organization }}/OU={{ organizationalunit }}/CN={{ commonname }}/emailAddress={{ email }}"
       args:
         creates: "{{ PATH_PKI }}/ldapcert.pem"
 
@@ -385,7 +319,7 @@
         group: ldap
         mode: '0400'
 
-    - name: Crear copia de cacerts.pem amb el certificat LDAP
+    - name: Crear còpia de cacerts.pem amb el certificat LDAP
       copy:
         src: "{{ PATH_PKI }}/ldapcert.pem"
         dest: "{{ PATH_PKI }}/cacerts.pem"
