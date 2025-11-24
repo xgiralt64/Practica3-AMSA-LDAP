@@ -289,160 +289,129 @@
         mode: '0644'
     
     
-    - name: Carreguem la configuració a la base de dades
-      command: >
-        ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/basedn.ldif
+- name: Configurar LDAP i TLS
+  hosts: localhost
+  become: yes
+  vars:
+    BASE: "dc=amsa,dc=udl,dc=cat"
+    groups:
+      - name: "programadors"
+        gid: 5000
+      - name: "dissenyadors"
+        gid: 5001
+    users:
+      - name: "ramon"
+        sn: "mateo"
+        uid: 4000
+      - name: "manel"
+        sn: "lopez"
+        uid: 4001
+    PATH_PKI: "/etc/pki/tls"
+    country: "ES"
+    state: "Spain"
+    locality: "Igualada"
+    organization: "UdL"
+    organizationalunit: "IT"
+    email: "admin@udl.cat"
+
+  tasks:
+    - name: Crear fitxer users.ldif
+      copy:
+        dest: /tmp/users.ldif
+        content: |
+          dn: cn=osproxy,ou=system,{{ BASE }}
+          objectClass: organizationalRole
+          objectClass: simpleSecurityObject
+          cn: osproxy
+          userPassword: {{ ldap_hash.stdout }}
+          description: OS proxy for resolving UIDs/GIDs
+
+          dn: ou=groups,{{ BASE }}
+          objectClass: posixGroup
+          ou: groups
+
+          dn: ou=users,{{ BASE }}
+          objectClass: posixGroup
+          ou: users
+
+          {% for g in groups %}
+          dn: cn={{ g.name }},ou=groups,{{ BASE }}
+          objectClass: posixGroup
+          cn: {{ g.name }}
+          gidNumber: {{ g.gid }}
+
+          {% endfor %}
+
+          {% for u in users %}
+          dn: uid={{ u.name }},ou=users,{{ BASE }}
+          objectClass: posixAccount
+          objectClass: shadowAccount
+          objectClass: inetOrgPerson
+          cn: {{ u.name }}
+          sn: {{ u.sn }}
+          uidNumber: {{ u.uid }}
+          gidNumber: {{ u.uid }}
+          homeDirectory: /home/{{ u.name }}
+          loginShell: /bin/sh
+
+          {% endfor %}
+
+    - name: Carregar users.ldif a la base de dades
+      command: ldapadd -Y EXTERNAL -H ldapi:/// -f /tmp/users.ldif
       register: ldapadd_result
       changed_when: true
 
-    - name: Crear fitxer users.ldif per LDAP
-      vars:
-        BASE: "dc=amsa,dc=udl,dc=cat"
-        groups:
-          - name: "programadors"
-            gid: 5000
-          - name: "dissenyadors"
-            gid: 5001
-        users:
-          - name: "ramon"
-            sn: "mateo"
-            uid: 4000
-          - name: "manel"
-            sn: "lopez"
-            uid: 4001
-      tasks:
-        - name: Crear fitxer users.ldif
-          copy:
-            dest: /tmp/users.ldif
-            content: |
-              dn: cn=osproxy,ou=system,{{ BASE }}
-              objectClass: organizationalRole
-              objectClass: simpleSecurityObject
-              cn: osproxy
-              userPassword: {{ ldap_hash.stdout }}
-              description: OS proxy for resolving UIDs/GIDs
+    - name: Obtenir hostname públic d'AWS (si és EC2)
+      amazon.aws.ec2_metadata_facts:
 
-              dn: ou=groups,{{ BASE }}
-              objectClass: posixGroup
-              ou: groups
+    - name: Assignar hostname a variable commonname
+      set_fact:
+        commonname: "{{ ansible_ec2_public_hostname | default(ansible_fqdn) }}"
 
-              dn: ou=users,{{ BASE }}
-              objectClass: posixGroup
-              ou: users
-
-              {% for g in groups %}
-              dn: cn={{ g.name }},ou=groups,{{ BASE }}
-              objectClass: posixGroup
-              cn: {{ g.name }}
-              gidNumber: {{ g.gid }}
-
-              {% endfor %}
-
-              {% for u in users %}
-              dn: uid={{ u.name }},ou=users,{{ BASE }}
-              objectClass: posixAccount
-              objectClass: shadowAccount
-              objectClass: inetOrgPerson
-              cn: {{ u.name }}
-              sn: {{ u.sn }}
-              uidNumber: {{ u.uid }}
-              gidNumber: {{ u.uid }}
-              homeDirectory: /home/{{ u.name }}
-              loginShell: /bin/sh
-
-              {% endfor %}
-
-
-      
-    - name: Carreguem la configuració a la base de dades
+    - name: Crear certificat i clau amb openssl
       command: >
-        ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/users.ldif
-      register: ldapadd_result
-      changed_when: true
+        openssl req -days 500 -newkey rsa:4096
+        -keyout "{{ PATH_PKI }}/ldapkey.pem"
+        -nodes -sha256 -x509
+        -out "{{ PATH_PKI }}/ldapcert.pem"
+        -subj "/C={{ country }}/ST={{ state }}/L={{ locality }}/O={{ organization }}/OU={{ organizationalunit }}/CN={{ commonname }}/emailAddress={{ email }}"
+      args:
+        creates: "{{ PATH_PKI }}/ldapcert.pem"
 
-    - name: Generar certificat OpenLDAP amb hostname
-      vars:
-        PATH_PKI: "/etc/pki/tls"
-        country: "ES"
-        state: "Spain"
-        locality: "Igualada"
-        organization: "UdL"
-        organizationalunit: "IT"
-        email: "admin@udl.cat"
-      tasks:
-        - name: Obtenir hostname públic d'AWS (si és EC2)
-          amazon.aws.ec2_metadata_facts:
+    - name: Canviar propietari de la clau LDAP
+      file:
+        path: "{{ PATH_PKI }}/ldapkey.pem"
+        owner: ldap
+        group: ldap
+        mode: '0400'
 
-        - name: Assignar hostname a variable commonname
-          set_fact:
-            commonname: "{{ ansible_ec2_public_hostname | default(ansible_fqdn) }}"
+    - name: Crear copia de cacerts.pem amb el certificat LDAP
+      copy:
+        src: "{{ PATH_PKI }}/ldapcert.pem"
+        dest: "{{ PATH_PKI }}/cacerts.pem"
+        owner: root
+        group: root
+        mode: '0644'
 
-        - name: Crear certificat i clau amb openssl
-          command: >
-            openssl req -days 500 -newkey rsa:4096
-            -keyout "{{ PATH_PKI }}/ldapkey.pem"
-            -nodes -sha256 -x509
-            -out "{{ PATH_PKI }}/ldapcert.pem"
-            -subj "/C={{ country }}/ST={{ state }}/L={{ locality }}/O={{ organization }}/OU={{ organizationalunit }}/CN={{ commonname }}/emailAddress={{ email }}"
-          args:
-            creates: "{{ PATH_PKI }}/ldapcert.pem"
+    - name: Crear fitxer add-tls.ldif
+      copy:
+        dest: /etc/openldap/add-tls.ldif
+        content: |
+          dn: cn=config
+          changetype: modify
+          add: olcTLSCACertificateFile
+          olcTLSCACertificateFile: "{{ PATH_PKI }}/cacerts.pem"
+          -
+          add: olcTLSCertificateKeyFile
+          olcTLSCertificateKeyFile: "{{ PATH_PKI }}/ldapkey.pem"
+          -
+          add: olcTLSCertificateFile
+          olcTLSCertificateFile: "{{ PATH_PKI }}/ldapcert.pem"
+        owner: root
+        group: root
+        mode: '0644'
 
-    - name: Ajustar permisos i propietat dels certificats LDAP
-      hosts: localhost
-      become: yes
-      vars:
-        PATH_PKI: "/etc/pki/tls"
-      tasks:
-        - name: Canviar propietari de la clau LDAP
-          file:
-            path: "{{ PATH_PKI }}/ldapkey.pem"
-            owner: ldap
-            group: ldap
-            mode: '0400'
-
-        - name: Crear copia de cacerts.pem amb el certificat LDAP
-          copy:
-            src: "{{ PATH_PKI }}/ldapcert.pem"
-            dest: "{{ PATH_PKI }}/cacerts.pem"
-            owner: root
-            group: root
-            mode: '0644'
-
-    - name: Afegir configuració TLS a OpenLDAP
-      vars:
-        PATH_PKI: "/etc/pki/tls"
-        OPENLDAP_LDIF: "/etc/openldap/add-tls.ldif"
-      tasks:
-        - name: Crear fitxer add-tls.ldif
-          copy:
-            dest: "{{ OPENLDAP_LDIF }}"
-            content: |
-              dn: cn=config
-              changetype: modify
-              add: olcTLSCACertificateFile
-              olcTLSCACertificateFile: "{{ PATH_PKI }}/cacerts.pem"
-              -
-              add: olcTLSCertificateKeyFile
-              olcTLSCertificateKeyFile: "{{ PATH_PKI }}/ldapkey.pem"
-              -
-              add: olcTLSCertificateFile
-              olcTLSCertificateFile: "{{ PATH_PKI }}/ldapcert.pem"
-            owner: root
-            group: root
-            mode: '0644'
-
-        - name: Carregar configuració TLS a OpenLDAP
-          command: ldapadd -Y EXTERNAL -H ldapi:/// -f "{{ OPENLDAP_LDIF }}"
-          args:
-            creates: "{{ OPENLDAP_LDIF }}"
-
-    
-
-    
-
-
-
-
-
-
-
+    - name: Carregar configuració TLS a OpenLDAP
+      command: ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/add-tls.ldif
+      args:
+        creates: /etc/openldap/add-tls.ldif
