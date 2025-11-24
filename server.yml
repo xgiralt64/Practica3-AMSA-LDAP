@@ -439,3 +439,44 @@
       register: ldap_tls_result
       changed_when: true
 
+    - name: Python HTTP Server per passar el certificat al client
+      shell: |
+        cd /etc/pki/tls
+        nohup python3 -m http.server 8000 &
+      args:
+        executable: /bin/bash
+
+
+
+    - name: Instalar Apache i extensions PHP necessàries per el LDAPAccountManager
+      dnf:
+        name:
+          - httpd
+          - php
+          - php-ldap
+          - php-mbstring
+          - php-gd
+          - php-gmp
+          - php-zip
+        state: present
+        update_cache: yes
+
+    - name: Habilitar i iniciar servei httpd
+      systemd:
+        name: httpd
+        state: started
+        enabled: yes
+
+    - name: Descarregar paquet LAM
+      get_url:
+        url: https://github.com/LDAPAccountManager/lam/releases/download/9.0.RC1/ldap-account-manager-9.0.RC1-0.fedora.1.noarch.rpm
+        dest: /tmp/ldap-account-manager-9.0.RC1-0.fedora.1.noarch.rpm
+        mode: '0644'
+
+    - name: Instalar paquet LAM
+      dnf:
+        name: /tmp/ldap-account-manager-9.0.RC1-0.fedora.1.noarch.rpm
+        state: present
+
+
+
