@@ -27,42 +27,27 @@
           state: present
           update_cache: yes
     
-    - name: Crear script d'instal·lació d'OpenLDAP simplificat
+    - name: Instalar OpenLDAP
       become: yes
-      copy:
-        dest: /tmp/install-ldap.sh
-        content: |
-          #!/bin/bash
-          set -e
-
-          VER="2.6.3"
-
-          cd /tmp
-
-          wget ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/openldap-$VER.tgz
-          tar xzf openldap-$VER.tgz
-
-          cd openldap-$VER
-
-          ./configure --prefix=/usr --sysconfdir=/etc --disable-static \
+      vars:
+        openldap_ver: "2.6.3"
+      shell: |
+        wget ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/openldap-{{ openldap_ver }}.tgz
+        tar xzf openldap-{{ openldap_ver }}.tgz
+        cd openldap-{{ openldap_ver }}
+        ./configure --prefix=/usr --sysconfdir=/etc --disable-static \
           --enable-debug --with-tls=openssl --with-cyrus-sasl --enable-dynamic \
           --enable-crypt --enable-spasswd --enable-slapd --enable-modules \
           --enable-rlookups --disable-sql --enable-ppolicy --enable-syslog
+        make depend
+        make
+        cd contrib/slapd-modules/passwd/sha2
+        make
+        cd ../../../..
+        make install
+        cd contrib/slapd-modules/passwd/sha2
+        make install
+      args:
+        chdir: /tmp
 
-          make depend
-          make
-
-          cd contrib/slapd-modules/passwd/sha2
-          make
-
-          cd ../../../..
-          make install
-
-          cd contrib/slapd-modules/passwd/sha2
-          make install
-        mode: '0755'
-
-    - name: Executar script d'instal·lació d'OpenLDAP
-      become: yes
-      command: bash /tmp/install-ldap.sh
 

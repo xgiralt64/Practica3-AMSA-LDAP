@@ -85,7 +85,7 @@ Resources:
           yum install -y git ansible
 
           # Executar el playbook des del repositori
-          ansible-pull \
+          sudo ansible-pull \
             -U https://github.com/xgiralt64/Practica3-AMSA-LDAP.git \
             -d /opt/ansible \
             server.yml
