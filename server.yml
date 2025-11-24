@@ -319,34 +319,48 @@
         group: root
         mode: '0644'
         content: |
-          dn: cn=osproxy,ou=system,{{ BASE }}
+          # Entry for OS proxy
+          dn: cn=osproxy,ou=system,dc=amsa,dc=udl,dc=cat
           objectClass: organizationalRole
           objectClass: simpleSecurityObject
           cn: osproxy
           userPassword: {{ ldap_hash.stdout }}
           description: OS proxy for resolving UIDs/GIDs
 
-          {% for g in groups %}
-          dn: cn={{ g.name }},ou=groups,{{ BASE }}
+          # Entries for groups
+          dn: cn=programadors,ou=groups,dc=amsa,dc=udl,dc=cat
           objectClass: posixGroup
-          cn: {{ g.name }}
-          gidNumber: {{ g.gid }}
+          cn: programadors
+          gidNumber: 5000
 
-          {% endfor %}
+          dn: cn=dissenyadors,ou=groups,dc=amsa,dc=udl,dc=cat
+          objectClass: posixGroup
+          cn: dissenyadors
+          gidNumber: 5001
 
-          {% for u in users %}
-          dn: uid={{ u.name }},ou=users,{{ BASE }}
+          # Entries for users
+          dn: uid=jordi,ou=users,dc=amsa,dc=udl,dc=cat
           objectClass: posixAccount
           objectClass: shadowAccount
           objectClass: inetOrgPerson
-          cn: {{ u.name }}
-          sn: {{ u.sn }}
-          uidNumber: {{ u.uid }}
-          gidNumber: {{ u.uid }}
-          homeDirectory: /home/{{ u.name }}
+          cn: jordi
+          sn: mateo
+          uidNumber: 4000
+          gidNumber: 4000
+          homeDirectory: /home/jordi
           loginShell: /bin/sh
 
-          {% endfor %}
+          dn: uid=manel,ou=users,dc=amsa,dc=udl,dc=cat
+          objectClass: posixAccount
+          objectClass: shadowAccount
+          objectClass: inetOrgPerson
+          cn: manel
+          sn: lopez
+          uidNumber: 4001
+          gidNumber: 4001
+          homeDirectory: /home/manel
+          loginShell: /bin/sh
+
 
     - name: Carregar usuaris i grups a la base de dades LDAP
       command: ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/users.ldif
