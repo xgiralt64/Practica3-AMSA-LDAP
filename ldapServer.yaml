@@ -6,6 +6,11 @@ Parameters:
     Type: AWS::EC2::KeyPair::KeyName
     Description: Selecciona una clau SSH existent
 
+  LDAPPassword:
+    Type: String
+    NoEcho: true
+    Description: Contrasenya del usuari admin LDAP
+
 Resources:
 
   VPC:
@@ -89,7 +94,8 @@ Resources:
             -U https://github.com/xgiralt64/Practica3-AMSA-LDAP.git \
             -d /opt/ansible \
             -i localhost \
-            server.yml
+            server.yml \
+            --extra-vars "PASSWORD=${LDAPPassword}"
 
 
 

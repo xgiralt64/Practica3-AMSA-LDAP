@@ -2,6 +2,12 @@
 - name: Configuració Server
   become: yes
   hosts: localhost
+  vars:
+    PASSWORD: "1234"
+    BASE: "dc=amsa,dc=udl,dc=cat"
+
+
+
   tasks:
     - name: Actualitzar repositoris
       dnf:
@@ -49,5 +55,216 @@
         make install
       args:
         chdir: /tmp
+
+    - name: Crear grup ldap amb gid 55
+      group:
+        name: ldap
+        gid: 55
+        state: present
+
+    - name: Crear usuari ldap amb uid 55
+      user:
+        name: ldap
+        uid: 55
+        group: ldap
+        home: /var/lib/openldap
+        shell: /usr/sbin/nologin
+        system: yes
+        create_home: no
+        state: present
+
+    - name: Crear directoris necessaris
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: ldap
+        group: ldap
+        mode: "0755"
+      loop:
+        - /var/lib/openldap
+        - /etc/openldap/slapd.d
+
+    - name: Assignar propietari al directori /var/lib/openldap
+      file:
+        path: /var/lib/openldap
+        owner: ldap
+        group: ldap
+        state: directory
+
+    - name: Assignar propietari i permisos a /etc/openldap/slapd.conf
+      file:
+        path: /etc/openldap/slapd.conf
+        owner: root
+        group: ldap
+        mode: "0640"
+        state: file
+
+    - name: Crear unitat systemd per a slapd
+      copy:
+        dest: /etc/systemd/system/slapd.service
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=OpenLDAP Server Daemon
+          After=syslog.target network-online.target
+          Documentation=man:slapd
+          Documentation=man:slapd-mdb
+
+          [Service]
+          Type=forking
+          PIDFile=/var/lib/openldap/slapd.pid
+          Environment="SLAPD_URLS=ldap:/// ldapi:/// ldaps:///"
+          Environment="SLAPD_OPTIONS=-F /etc/openldap/slapd.d"
+          ExecStart=/usr/libexec/slapd -u ldap -g ldap -h ${SLAPD_URLS} $SLAPD_OPTIONS
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Recarregar systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: Habilitar el servei slapd
+      systemd:
+        name: slapd
+        enabled: yes
+    
+    - name: Generar hash SSHA512 de la contrasenya
+      command: >
+        slappasswd -h "{SSHA512}"
+        -o module-load=pw-sha2.la
+        -o module-path=/usr/local/libexec/openldap
+        -s {{ PASSWORD }}
+      register: ldap_hash
+      changed_when: true
+
+    - name: Crear slapd.ldif
+      copy:
+        dest: /etc/openldap/slapd.ldif
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          dn: cn=config
+          objectClass: olcGlobal
+          cn: config
+          olcArgsFile: /var/lib/openldap/slapd.args
+          olcPidFile: /var/lib/openldap/slapd.pid
+          olcTLSCipherSuite: TLSv1.2:HIGH:\!aNULL:\!eNULL
+          olcTLSProtocolMin: 3.3
+
+          dn: cn=schema,cn=config
+          objectClass: olcSchemaConfig
+          cn: schema
+
+          dn: cn=module,cn=config
+          objectClass: olcModuleList
+          cn: module
+          olcModulepath: /usr/libexec/openldap
+          olcModuleload: back_mdb.la
+
+          dn: cn=module,cn=config
+          objectClass: olcModuleList
+          cn: module
+          olcModulepath: /usr/local/libexec/openldap
+          olcModuleload: pw-sha2.la
+
+          include: file:///etc/openldap/schema/core.ldif
+          include: file:///etc/openldap/schema/cosine.ldif
+          include: file:///etc/openldap/schema/nis.ldif
+          include: file:///etc/openldap/schema/inetorgperson.ldif
+
+          dn: olcDatabase=frontend,cn=config
+          objectClass: olcDatabaseConfig
+          objectClass: olcFrontendConfig
+          olcDatabase: frontend
+          olcPasswordHash: {{ ldap_hash.stdout }}
+          olcAccess: to dn.base="cn=Subschema" by * read
+          olcAccess: to *
+            by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage
+            by * none
+
+          dn: olcDatabase=config,cn=config
+          objectClass: olcDatabaseConfig
+          olcDatabase: config
+          olcRootDN: cn=config
+          olcAccess: to *
+            by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage
+            by * none
+
+    - name: Importar slapd.ldif a slapd.d
+      command: >
+        slapadd -n 0 -F /etc/openldap/slapd.d
+        -l /etc/openldap/slapd.ldif
+      args:
+        chdir: /etc/openldap
+      register: slapadd_result
+      changed_when: true
+
+    - name: Assegurar permisos de slapd.d
+      file:
+        path: /etc/openldap/slapd.d
+        owner: ldap
+        group: ldap
+        recurse: yes
+    
+    - name: Activar i iniciar slapd
+      systemd:
+        name: slapd
+        enabled: yes
+        state: started
+        daemon_reload: yes
+
+    - name: Crear rootdn.ldif
+      copy:
+        dest: /etc/openldap/rootdn.ldif
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          dn: olcDatabase=mdb,cn=config
+          objectClass: olcDatabaseConfig
+          objectClass: olcMdbConfig
+          olcDatabase: mdb
+          olcDbMaxSize: 42949672960
+          olcDbDirectory: /var/lib/openldap
+          olcSuffix: {{ BASE }}
+          olcRootDN: cn=admin,{{ BASE }}
+          olcRootPW: {{ ldap_hash.stdout }}
+          olcDbIndex: uid pres,eq
+          olcDbIndex: cn,sn pres,eq,approx,sub
+          olcDbIndex: mail pres,eq,sub
+          olcDbIndex: objectClass pres,eq
+          olcDbIndex: loginShell pres,eq
+          olcAccess: to attrs=userPassword,shadowLastChange,shadowExpire
+            by self write
+            by anonymous auth
+            by dn.subtree="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage
+            by dn.subtree="ou=system,{{ BASE }}" read
+            by * none
+          olcAccess: to dn.subtree="ou=system,{{ BASE }}"
+            by dn.subtree="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage
+            by * none
+          olcAccess: to dn.subtree="{{ BASE }}"
+            by dn.subtree="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage
+            by users read
+            by * none
+
+
+
+    - name: Importar base de dades MDB a cn=config
+      command: >
+        ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/rootdn.ldif
+      register: ldapadd_result
+      changed_when: true
+
+    
+
+
+
+
+
 
 

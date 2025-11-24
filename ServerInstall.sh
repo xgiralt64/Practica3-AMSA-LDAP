@@ -137,14 +137,7 @@ HASH=$(slappasswd -h "{SSHA512}" \
     -o module-path=/usr/local/libexec/openldap \
     -s "$PASSWORD")
 
-log "Hash generat: $HASH"
 
-echo
-echo "Hash generat per OpenLDAP:"
-echo "$HASH"
-echo
-
-log "Creant /etc/openldap/slapd.ldif..."
 
 cat >/etc/openldap/slapd.ldif <<EOL
 dn: cn=config
