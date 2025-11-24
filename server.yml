@@ -439,15 +439,6 @@
       register: ldap_tls_result
       changed_when: true
 
-    - name: Python HTTP Server per passar el certificat al client
-      shell: |
-        cd /etc/pki/tls
-        nohup python3 -m http.server 8000 &
-      args:
-        executable: /bin/bash
-
-
-
     - name: Instalar Apache i extensions PHP necessàries per el LDAPAccountManager
       dnf:
         name:
@@ -478,5 +469,12 @@
         name: /tmp/ldap-account-manager-9.0.RC1-0.fedora.1.noarch.rpm
         state: present
 
+
+    - name: Python HTTP Server per passar el certificat al client
+      shell: |
+        cd /etc/pki/tls
+        nohup python3 -m http.server 8000 &
+      args:
+        executable: /bin/bash
 
 
