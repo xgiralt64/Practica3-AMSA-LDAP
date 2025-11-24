@@ -98,7 +98,6 @@ Resources:
             server.yml \
             --extra-vars "PASSWORD=${LDAPPassword}"
 
-
 Outputs:
   LDAPServerPublicIP:
     Description: IP pública

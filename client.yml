@@ -1,0 +1,132 @@
+---
+- name: Configuració Clients
+  become: yes
+  hosts: localhost
+  vars:
+    PASSWORD: "1234"
+    SERVERADDR: ""
+
+    BASE: "dc=amsa,dc=udl,dc=cat"
+    PATH_PKI: "/etc/pki/tls"
+
+  tasks:
+    - name: Actualitzar repositoris
+      dnf:
+        name: "*"
+        state: latest
+
+    - name: Descarregar cacerts.pem des del servidor HTTP
+      get_url:
+        url: "http://{{ SERVERADDR }}:8000/cacerts.pem"
+        dest: /etc/pki/tls/cacert.crt
+        mode: '0644'
+        owner: root
+        group: root
+        force: yes
+
+    - name: Instal·lar paquets LDAP i SSSD
+      dnf:
+        name:
+          - openldap-clients
+          - authselect
+          - sssd
+          - sssd-tools
+          - oddjob-mkhomedir
+        state: present
+        update_cache: yes
+
+    - name: Crear fitxer de configuració SSSD sense plantilla
+      copy:
+        dest: /etc/sssd/sssd.conf
+        owner: root
+        group: root
+        mode: '0600'
+        content: |
+          [sssd]
+          services = nss, pam, sudo
+          config_file_version = 2
+          domains = default
+
+          [sudo]
+
+          [nss]
+
+          [pam]
+          offline_credentials_expiration = 60
+
+          [domain/default]
+          ldap_id_use_start_tls = True
+          cache_credentials = True
+          ldap_search_base = {{ BASE }}
+          id_provider = ldap
+          auth_provider = ldap
+          chpass_provider = ldap
+          access_provider = ldap
+          sudo_provider = ldap
+          ldap_uri = ldaps://{{ SERVERADDR }}
+          ldap_default_bind_dn = cn=osproxy,ou=system,{{ BASE }}
+          ldap_group_search_base = ou=groups,{{ BASE }}
+          ldap_user_search_base = ou=users,{{ BASE }}
+          ldap_default_authtok = {{ PASSWORD }}
+          ldap_tls_reqcert = demand
+          ldap_tls_cacert = {{ PATH_PKI }}/cacert.crt
+          ldap_tls_cacertdir = {{ PATH_PKI }}
+          ldap_search_timeout = 50
+          ldap_network_timeout = 60
+          ldap_access_order = filter
+          ldap_access_filter = (objectClass=posixAccount)
+
+    - name: Configurar /etc/openldap/ldap.conf
+      block:
+        - name: Afegir BASE al ldap.conf
+          lineinfile:
+            path: /etc/openldap/ldap.conf
+            line: "BASE {{ BASE }}"
+            create: yes
+
+        - name: Afegir URI al ldap.conf
+          lineinfile:
+            path: /etc/openldap/ldap.conf
+            line: "URI ldaps://{{ SERVERADDR }}"
+
+        - name: Afegir TLS_CACERT al ldap.conf
+          lineinfile:
+            path: /etc/openldap/ldap.conf
+            line: "TLS_CACERT {{ PATH_PKI }}/cacert.crt"
+
+
+    - name: Configurar authselect amb SSSD
+      command: authselect select sssd --force
+
+    - name: Habilitar i iniciar servei oddjobd
+      systemd:
+        name: oddjobd
+        enabled: yes
+        state: started
+
+    - name: Afegir pam_oddjob_mkhomedir a system-auth
+      lineinfile:
+        path: /etc/pam.d/system-auth
+        line: "session optional pam_oddjob_mkhomedir.so skel=/etc/skel/ umask=0022"
+
+    - name: Assignar permisos a /etc/sssd
+      file:
+        path: /etc/sssd
+        owner: root
+        group: root
+        mode: '0600'
+        recurse: yes
+
+    - name: Habilitar i iniciar SSSD
+      systemd:
+        name: sssd
+        enabled: yes
+        state: started
+
+    - name: Crear directori /home/jordi
+      file:
+        path: /home/jordi
+        state: directory
+        owner: 4000
+        group: 5000
+        mode: '0755'

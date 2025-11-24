@@ -6,36 +6,111 @@ Parameters:
     Type: AWS::EC2::KeyPair::KeyName
     Description: Selecciona una clau SSH existent
 
+  LDAPClientADDR:
+    Type: String
+    Description: Hostname del Client
+
 Resources:
 
-  ImportedVPC:
+  VPC:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: !ImportValue LDAP-VPC-ID
-    DeletionPolicy: Retain
+      CidrBlock: 10.1.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.1.1.0/24
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  RouteToInternet:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref RouteTable
 
   LDAPClientSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: LDAP Client SG
-      VpcId: !ImportValue LDAP-VPC-ID
+      VpcId: !Ref VPC
       SecurityGroupIngress:
-        - { IpProtocol: tcp, FromPort: 22, ToPort: 22, CidrIp: 0.0.0.0/0 }
+        - { IpProtocol: tcp, FromPort: 22,  ToPort: 22,  CidrIp: 0.0.0.0/0 }
+        - { IpProtocol: tcp, FromPort: 80,  ToPort: 80,  CidrIp: 0.0.0.0/0 }
+        - { IpProtocol: tcp, FromPort: 389, ToPort: 389, CidrIp: 0.0.0.0/0 }
+        - { IpProtocol: tcp, FromPort: 636, ToPort: 636, CidrIp: 0.0.0.0/0 }
+        - { IpProtocol: tcp, FromPort: 8000, ToPort: 8000, CidrIp: 0.0.0.0/0 }
 
   LDAPClientInstance:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: ami-04ff98ccbfa41c9ad
+      ImageId: ami-0fa3fe0fa7920f68e
       InstanceType: t3.micro
       KeyName: !Ref KeyName
-      SubnetId: !ImportValue LDAP-SUBNET-ID
-      SecurityGroupIds:
-        - !Ref LDAPClientSG
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds: [!Ref LDAPClientSG]
       Tags:
         - Key: Name
           Value: LDAP Client
 
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          exec > /home/ec2-user/user-data.log 2>&1
+
+          set -xe
+
+          yum update -y
+
+          yum install -y git ansible
+
+          sudo ansible-pull \
+            -U https://github.com/xgiralt64/Practica3-AMSA-LDAP.git \
+            -d /opt/ansible \
+            -i localhost \
+            client.yml \
+            --extra-vars "SERVERADDR=${LDAPClientADDR}"
+
+
 Outputs:
   LDAPClientPublicIP:
+    Description: IP pública
     Value: !GetAtt LDAPClientInstance.PublicIp
-    Description: IP pública del client
+
+  ExportVPCId:
+    Value: !Ref VPC
+    Export: { Name: LDAP-VPC-ID }
+
+  ExportSubnetId:
+    Value: !Ref PublicSubnet
+    Export: { Name: LDAP-SUBNET-ID }
+
+  ExportClientSG:
+    Value: !Ref LDAPClientSG
+    Export: { Name: LDAP-CLIENT-SG }
