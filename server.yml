@@ -1,0 +1,68 @@
+---
+- name: Configuració Server
+  become: yes
+
+  tasks:
+    - name: Actualitzar repositoris
+      dnf:
+        name: "*"
+        state: latest
+
+    - name: Instalar paquets necessaris
+      dnf:
+          name:
+            - cyrus-sasl-devel
+            - make
+            - libtool
+            - autoconf
+            - libtool-ltdl-devel
+            - openssl-devel
+            - libdb-devel
+            - tar
+            - gcc
+            - perl
+            - perl-devel
+            - wget
+            - vim
+          state: present
+          update_cache: yes
+    
+    - name: Crear script d'instal·lació d'OpenLDAP simplificat
+      become: yes
+      copy:
+        dest: /tmp/install-ldap.sh
+        content: |
+          #!/bin/bash
+          set -e
+
+          VER="2.6.3"
+
+          cd /tmp
+
+          wget ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/openldap-$VER.tgz
+          tar xzf openldap-$VER.tgz
+
+          cd openldap-$VER
+
+          ./configure --prefix=/usr --sysconfdir=/etc --disable-static \
+          --enable-debug --with-tls=openssl --with-cyrus-sasl --enable-dynamic \
+          --enable-crypt --enable-spasswd --enable-slapd --enable-modules \
+          --enable-rlookups --disable-sql --enable-ppolicy --enable-syslog
+
+          make depend
+          make
+
+          cd contrib/slapd-modules/passwd/sha2
+          make
+
+          cd ../../../..
+          make install
+
+          cd contrib/slapd-modules/passwd/sha2
+          make install
+        mode: '0755'
+
+    - name: Executar script d'instal·lació d'OpenLDAP
+      become: yes
+      command: bash /tmp/install-ldap.sh
+

@@ -322,7 +322,7 @@ done
 
 
 log "Carregant usuaris i grups..."
-#AIXO TAMBE FALLA PERQUE FALTA NEWLINE
+
 ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/users.ldif >>"$LOGFILE" 2>&1
 
 
@@ -331,6 +331,7 @@ PATH_PKI="/etc/pki/tls"
 IP=$(curl ifconfig.me)
 HOSTNAME=$(dig -x $IP +short)
 
+#AIXO NO ES MOSTRA
 echo $IP
 echo $HOSTNAME
 

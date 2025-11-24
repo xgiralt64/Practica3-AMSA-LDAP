@@ -81,12 +81,15 @@ Resources:
 
           yum update -y
 
-          # Descarrego l'script del meu git
-          curl -o /root/ServerInstall.sh https://raw.githubusercontent.com/xgiralt64/Practica3-AMSA-LDAP/refs/heads/main/ServerInstall.sh
+          # Instal·lar git i ansible
+          yum install -y git ansible
 
-          # I l'executo
-          chmod +x /root/ServerInstall.sh
-          bash /root/ServerInstall.sh 1234
+          # Executar el playbook des del repositori
+          ansible-pull \
+            -U https://github.com/xgiralt64/Practica3-AMSA-LDAP.git \
+            -d /opt/ansible \
+            server.yml
+
 
 Outputs:
   LDAPServerPublicIP:
