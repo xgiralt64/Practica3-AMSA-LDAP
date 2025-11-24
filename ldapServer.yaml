@@ -89,7 +89,7 @@ Resources:
             -U https://github.com/xgiralt64/Practica3-AMSA-LDAP.git \
             -d /opt/ansible \
             -i localhost \
-            server.yml > /var/log/ansible-pull.log 2>&1
+            server.yml > /home/ec2-user/ansible-pull.log 2>&1
 
 
 
