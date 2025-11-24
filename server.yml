@@ -1,7 +1,7 @@
 ---
 - name: Configuració Server
   become: yes
-
+  hosts: localhost
   tasks:
     - name: Actualitzar repositoris
       dnf:
