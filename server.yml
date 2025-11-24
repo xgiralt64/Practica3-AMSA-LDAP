@@ -279,7 +279,7 @@
 
     - name: Crear fitxer basedn.ldif
       copy:
-        dest: /tmp/basedn.ldif
+        dest: /etc/openldap/basedn.ldif
         content: |
           dn: dc=amsa,dc=udl,dc=cat
           objectClass: dcObject
