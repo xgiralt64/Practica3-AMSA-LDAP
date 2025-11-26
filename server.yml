@@ -368,8 +368,8 @@
 
     - name: Mostrar hostname per debug
       command: >
-        echo "hostname:"
-        echo "{{ commonname }}"
+        bash -c 'echo "hostname:" > hostname.txt &&
+                echo "{{ commonname }}" >> hostname.txt'
 
 
 
