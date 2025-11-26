@@ -360,9 +360,19 @@
     - name: Obtenir hostname públic d'AWS (si és EC2)
       amazon.aws.ec2_metadata_facts:
 
-    - name: Assignar hostname a variable commonname
+    - name: Assignar hostname a variable commonname per poder fer servir a sota al camp CN
       set_fact:
-        commonname: "{{ ansible_ec2_public_hostname | default(ansible_fqdn) }}"
+        commonname: "{{ ansible_ec2_public_hostname }}"
+
+
+
+    - name: Mostrar hostname per debug
+      command: >
+        echo "hostname:"
+        echo "{{ commonname }}"
+
+
+
 
     - name: Crear certificat i clau amb openssl
       command: >

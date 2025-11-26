@@ -82,7 +82,7 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          exec > /home/ec2-user/user-data.log 2>&1
+          exec > /home/ec2-user/LDAPInstall.log 2>&1
 
           set -xe
 
