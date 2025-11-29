@@ -357,7 +357,7 @@
       changed_when: true
 
 
-    - name: Obtenir hostname públic d'AWS (si és EC2)
+    - name: Obtenir hostname públic d'AWS
       amazon.aws.ec2_metadata_facts:
 
     - name: Assignar hostname a variable commonname per poder fer servir a sota al camp CN
