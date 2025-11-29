@@ -24,7 +24,7 @@
         group: root
         force: yes
 
-    - name: Instal·lar paquets LDAP i SSSD
+    - name: Instalar paquets LDAP i SSSD
       dnf:
         name:
           - openldap-clients
@@ -35,7 +35,7 @@
         state: present
         update_cache: yes
 
-    - name: Crear fitxer de configuració SSSD sense plantilla
+    - name: Crear fitxer de configuració SSSD
       copy:
         dest: /etc/sssd/sssd.conf
         owner: root
