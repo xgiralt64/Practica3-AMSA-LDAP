@@ -416,13 +416,13 @@
           dn: cn=config
           changetype: modify
           add: olcTLSCACertificateFile
-          olcTLSCACertificateFile: "{{ PATH_PKI }}/cacerts.pem"
+          olcTLSCACertificateFile: {{ PATH_PKI }}/cacerts.pem
           -
           add: olcTLSCertificateKeyFile
-          olcTLSCertificateKeyFile: "{{ PATH_PKI }}/ldapkey.pem"
+          olcTLSCertificateKeyFile: {{ PATH_PKI }}/ldapkey.pem
           -
           add: olcTLSCertificateFile
-          olcTLSCertificateFile: "{{ PATH_PKI }}/ldapcert.pem"
+          olcTLSCertificateFile: {{ PATH_PKI }}/ldapcert.pem
 
     - name: Carregar configuració TLS a OpenLDAP
       command: ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/add-tls.ldif
