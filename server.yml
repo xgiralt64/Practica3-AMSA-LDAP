@@ -497,7 +497,7 @@
           loginShell: /bin/bash
           mail: professor2@amsa.udl.cat
 
-          # Administrador
+          # Admin
           dn: uid=admin1,ou=users,dc=amsa,dc=udl,dc=cat
           objectClass: posixAccount
           objectClass: shadowAccount
@@ -510,7 +510,7 @@
           loginShell: /bin/bash
           mail: admin1@amsa.udl.cat
 
-    - name: Afegir usuaris i grups a LDAP
+    - name: Afegir nous users a ldap
       shell: |
         ldapadd -c -Y EXTERNAL -H ldapi:/// -f /etc/openldap/users.ldif
       register: users_result
