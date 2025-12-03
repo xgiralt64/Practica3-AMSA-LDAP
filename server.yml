@@ -300,7 +300,7 @@
       register: ldapadd_result
       changed_when: true
 
-    - name: Crear fitxer users.ldif amb OS proxy, grups, rols i usuaris
+    - name: Crear fitxer users.ldif amb OS proxy, grups i usuaris
       copy:
         dest: /etc/openldap/users.ldif
         owner: ldap
@@ -315,10 +315,7 @@
           userPassword: {{ ldap_hash.stdout }}
           description: OS proxy for resolving UIDs/GIDs
 
-          dn: ou=groups,dc=amsa,dc=udl,dc=cat
-          objectClass: organizationalUnit
-          ou: groups
-
+          # Entries for groups
           dn: cn=programadors,ou=groups,dc=amsa,dc=udl,dc=cat
           objectClass: posixGroup
           cn: programadors
@@ -329,7 +326,55 @@
           cn: dissenyadors
           gidNumber: 5001
 
-          # Rols d'aplicació (groupOfNames)
+          # Entries for users
+          dn: uid=jordi,ou=users,dc=amsa,dc=udl,dc=cat
+          objectClass: posixAccount
+          objectClass: shadowAccount
+          objectClass: inetOrgPerson
+          cn: jordi
+          sn: mateo
+          uidNumber: 4000
+          gidNumber: 4000
+          homeDirectory: /home/jordi
+          loginShell: /bin/sh
+
+          dn: uid=manel,ou=users,dc=amsa,dc=udl,dc=cat
+          objectClass: posixAccount
+          objectClass: shadowAccount
+          objectClass: inetOrgPerson
+          cn: manel
+          sn: lopez
+          uidNumber: 4001
+          gidNumber: 4001
+          homeDirectory: /home/manel
+          loginShell: /bin/sh
+
+
+    - name: Carregar usuaris i grups a la base de dades LDAP
+      command: ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/users.ldif
+      register: ldapadd_users_result
+      changed_when: true
+
+
+    - name: Crear fitxer users.ldif amb grups, rols i usuaris extra
+      copy:
+        dest: /etc/openldap/users.ldif
+        owner: ldap
+        group: ldap
+        mode: '0644'
+        content: |
+          # Entries for POSIX groups
+          dn: cn=programadors,ou=groups,dc=amsa,dc=udl,dc=cat
+          objectClass: posixGroup
+          cn: programadors
+          gidNumber: 5000
+
+          dn: cn=dissenyadors,ou=groups,dc=amsa,dc=udl,dc=cat
+          objectClass: posixGroup
+          cn: dissenyadors
+          gidNumber: 5001
+
+          # Rols d'aplicació
           dn: cn=alumne,ou=groups,dc=amsa,dc=udl,dc=cat
           objectClass: groupOfNames
           cn: alumne
@@ -353,33 +398,6 @@
           cn: admin
           description: Rol d'administrador
           member: uid=admin1,ou=users,dc=amsa,dc=udl,dc=cat
-
-          # Organizational Unit for Users
-          dn: ou=users,dc=amsa,dc=udl,dc=cat
-          objectClass: organizationalUnit
-          ou: users
-
-          dn: uid=jordi,ou=users,dc=amsa,dc=udl,dc=cat
-          objectClass: posixAccount
-          objectClass: shadowAccount
-          objectClass: inetOrgPerson
-          cn: jordi
-          sn: mateo
-          uidNumber: 4000
-          gidNumber: 4000
-          homeDirectory: /home/jordi
-          loginShell: /bin/sh
-
-          dn: uid=manel,ou=users,dc=amsa,dc=udl,dc=cat
-          objectClass: posixAccount
-          objectClass: shadowAccount
-          objectClass: inetOrgPerson
-          cn: manel
-          sn: lopez
-          uidNumber: 4001
-          gidNumber: 4001
-          homeDirectory: /home/manel
-          loginShell: /bin/sh
 
           # Alumnes
           dn: uid=alumne1,ou=users,dc=amsa,dc=udl,dc=cat
@@ -479,7 +497,7 @@
           loginShell: /bin/bash
           mail: professor2@amsa.udl.cat
 
-          # Admin
+          # Administrador
           dn: uid=admin1,ou=users,dc=amsa,dc=udl,dc=cat
           objectClass: posixAccount
           objectClass: shadowAccount
@@ -492,13 +510,14 @@
           loginShell: /bin/bash
           mail: admin1@amsa.udl.cat
 
-
-    - name: Carregar usuaris i grups a la base de dades LDAP
-      command: ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/users.ldif
-      register: ldapadd_users_result
-      changed_when: true
-
-
+    - name: Afegir usuaris i grups a LDAP
+      shell: |
+        ldapadd -c -Y EXTERNAL -H ldapi:/// -f /etc/openldap/users.ldif
+      register: users_result
+      failed_when: 
+        - users_result.rc != 0
+        - users_result.rc != 68
+      changed_when: users_result.rc == 0
     
 
 
