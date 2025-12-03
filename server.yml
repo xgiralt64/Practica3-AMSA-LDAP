@@ -149,8 +149,8 @@
     - name: Crear slapd.ldif
       copy:
         dest: /etc/openldap/slapd.ldif
-        owner: root
-        group: root
+        owner: ldap
+        group: ldap
         mode: '0644'
         content: |
           dn: cn=config
@@ -202,8 +202,7 @@
 
     - name: Importar slapd.ldif a slapd.d
       command: >
-        slapadd -n 0 -F /etc/openldap/slapd.d
-        -l /etc/openldap/slapd.ldif
+        slapadd -n 0 -F /etc/openldap/slapd.d -l /etc/openldap/slapd.ldif
       args:
         chdir: /etc/openldap
       register: slapadd_result
@@ -226,8 +225,8 @@
     - name: Crear rootdn.ldif
       copy:
         dest: /etc/openldap/rootdn.ldif
-        owner: root
-        group: root
+        owner: ldap
+        group: ldap
         mode: '0644'
         content: |
           dn: olcDatabase=mdb,cn=config
@@ -291,8 +290,8 @@
           objectClass: organizationalUnit
           objectClass: top
           ou: system
-        owner: root
-        group: root
+        owner: ldap
+        group: ldap
         mode: '0644'
     
     - name: Carreguem la configuració a la base de dades
@@ -304,8 +303,8 @@
     - name: Crear fitxer users.ldif amb OS proxy, grups i usuaris
       copy:
         dest: /etc/openldap/users.ldif
-        owner: root
-        group: root
+        owner: ldap
+        group: ldap
         mode: '0644'
         content: |
           # Entry for OS proxy
@@ -394,8 +393,8 @@
       copy:
         src: "{{ PATH_PKI }}/ldapcert.pem"
         dest: "{{ PATH_PKI }}/cacerts.pem"
-        owner: root
-        group: root
+        owner: ldap
+        group: ldap
         mode: '0644'
 
     - name: Assignar propietari i permisos de la clau LDAP
@@ -409,8 +408,8 @@
     - name: Crear fitxer add-tls.ldif per configurar TLS a OpenLDAP
       copy:
         dest: /etc/openldap/add-tls.ldif
-        owner: root
-        group: root
+        owner: ldap
+        group: ldap
         mode: '0644'
         content: |
           dn: cn=config
@@ -426,8 +425,6 @@
 
     - name: Carregar configuració TLS a OpenLDAP
       command: ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/add-tls.ldif
-      args:
-        creates: /etc/openldap/add-tls.ldif
       register: ldap_tls_result
       changed_when: true
 
