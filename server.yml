@@ -404,8 +404,8 @@
           objectClass: posixAccount
           objectClass: shadowAccount
           objectClass: inetOrgPerson
-          cn: Joan
-          sn: Garcia
+          cn: Xavier
+          sn: Giralt
           uidNumber: 5001
           gidNumber: 5001
           homeDirectory: /home/alumne1
@@ -416,8 +416,8 @@
           objectClass: posixAccount
           objectClass: shadowAccount
           objectClass: inetOrgPerson
-          cn: Maria
-          sn: Fernandez
+          cn: Jonas
+          sn: Obando
           uidNumber: 5002
           gidNumber: 5002
           homeDirectory: /home/alumne2
@@ -428,8 +428,8 @@
           objectClass: posixAccount
           objectClass: shadowAccount
           objectClass: inetOrgPerson
-          cn: Pere
-          sn: Martinez
+          cn: Jonas
+          sn: Obando
           uidNumber: 5003
           gidNumber: 5003
           homeDirectory: /home/alumne3
@@ -440,8 +440,8 @@
           objectClass: posixAccount
           objectClass: shadowAccount
           objectClass: inetOrgPerson
-          cn: Laura
-          sn: Sanchez
+          cn: Xavier
+          sn: Giralt
           uidNumber: 5004
           gidNumber: 5004
           homeDirectory: /home/alumne4
@@ -452,8 +452,8 @@
           objectClass: posixAccount
           objectClass: shadowAccount
           objectClass: inetOrgPerson
-          cn: David
-          sn: Lopez
+          cn: Xavier
+          sn: Giralt
           uidNumber: 5005
           gidNumber: 5005
           homeDirectory: /home/alumne5
@@ -464,8 +464,8 @@
           objectClass: posixAccount
           objectClass: shadowAccount
           objectClass: inetOrgPerson
-          cn: Anna
-          sn: Gomez
+          cn: Xavier
+          sn: Giralt
           uidNumber: 5006
           gidNumber: 5006
           homeDirectory: /home/alumne6
@@ -477,8 +477,8 @@
           objectClass: posixAccount
           objectClass: shadowAccount
           objectClass: inetOrgPerson
-          cn: Carles
-          sn: Roca
+          cn: Jordi
+          sn: Mateo
           uidNumber: 6001
           gidNumber: 6001
           homeDirectory: /home/professor1
@@ -489,8 +489,8 @@
           objectClass: posixAccount
           objectClass: shadowAccount
           objectClass: inetOrgPerson
-          cn: Montserrat
-          sn: Puig
+          cn: Manel
+          sn: Lopez
           uidNumber: 6002
           gidNumber: 6002
           homeDirectory: /home/professor2
