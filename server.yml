@@ -300,7 +300,7 @@
       register: ldapadd_result
       changed_when: true
 
-    - name: Crear fitxer users.ldif amb OS proxy, grups i usuaris
+    - name: Crear fitxer users.ldif amb OS proxy, grups, rols i usuaris
       copy:
         dest: /etc/openldap/users.ldif
         owner: ldap
@@ -315,7 +315,10 @@
           userPassword: {{ ldap_hash.stdout }}
           description: OS proxy for resolving UIDs/GIDs
 
-          # Entries for groups
+          dn: ou=groups,dc=amsa,dc=udl,dc=cat
+          objectClass: organizationalUnit
+          ou: groups
+
           dn: cn=programadors,ou=groups,dc=amsa,dc=udl,dc=cat
           objectClass: posixGroup
           cn: programadors
@@ -326,7 +329,36 @@
           cn: dissenyadors
           gidNumber: 5001
 
-          # Entries for users
+          # Rols d'aplicació (groupOfNames)
+          dn: cn=alumne,ou=groups,dc=amsa,dc=udl,dc=cat
+          objectClass: groupOfNames
+          cn: alumne
+          description: Rol d'alumne
+          member: uid=alumne1,ou=users,dc=amsa,dc=udl,dc=cat
+          member: uid=alumne2,ou=users,dc=amsa,dc=udl,dc=cat
+          member: uid=alumne3,ou=users,dc=amsa,dc=udl,dc=cat
+          member: uid=alumne4,ou=users,dc=amsa,dc=udl,dc=cat
+          member: uid=alumne5,ou=users,dc=amsa,dc=udl,dc=cat
+          member: uid=alumne6,ou=users,dc=amsa,dc=udl,dc=cat
+
+          dn: cn=professor,ou=groups,dc=amsa,dc=udl,dc=cat
+          objectClass: groupOfNames
+          cn: professor
+          description: Rol de professor
+          member: uid=professor1,ou=users,dc=amsa,dc=udl,dc=cat
+          member: uid=professor2,ou=users,dc=amsa,dc=udl,dc=cat
+
+          dn: cn=admin,ou=groups,dc=amsa,dc=udl,dc=cat
+          objectClass: groupOfNames
+          cn: admin
+          description: Rol d'administrador
+          member: uid=admin1,ou=users,dc=amsa,dc=udl,dc=cat
+
+          # Organizational Unit for Users
+          dn: ou=users,dc=amsa,dc=udl,dc=cat
+          objectClass: organizationalUnit
+          ou: users
+
           dn: uid=jordi,ou=users,dc=amsa,dc=udl,dc=cat
           objectClass: posixAccount
           objectClass: shadowAccount
@@ -349,11 +381,125 @@
           homeDirectory: /home/manel
           loginShell: /bin/sh
 
+          # Alumnes
+          dn: uid=alumne1,ou=users,dc=amsa,dc=udl,dc=cat
+          objectClass: posixAccount
+          objectClass: shadowAccount
+          objectClass: inetOrgPerson
+          cn: Joan
+          sn: Garcia
+          uidNumber: 5001
+          gidNumber: 5001
+          homeDirectory: /home/alumne1
+          loginShell: /bin/bash
+          mail: alumne1@amsa.udl.cat
+
+          dn: uid=alumne2,ou=users,dc=amsa,dc=udl,dc=cat
+          objectClass: posixAccount
+          objectClass: shadowAccount
+          objectClass: inetOrgPerson
+          cn: Maria
+          sn: Fernandez
+          uidNumber: 5002
+          gidNumber: 5002
+          homeDirectory: /home/alumne2
+          loginShell: /bin/bash
+          mail: alumne2@amsa.udl.cat
+
+          dn: uid=alumne3,ou=users,dc=amsa,dc=udl,dc=cat
+          objectClass: posixAccount
+          objectClass: shadowAccount
+          objectClass: inetOrgPerson
+          cn: Pere
+          sn: Martinez
+          uidNumber: 5003
+          gidNumber: 5003
+          homeDirectory: /home/alumne3
+          loginShell: /bin/bash
+          mail: alumne3@amsa.udl.cat
+
+          dn: uid=alumne4,ou=users,dc=amsa,dc=udl,dc=cat
+          objectClass: posixAccount
+          objectClass: shadowAccount
+          objectClass: inetOrgPerson
+          cn: Laura
+          sn: Sanchez
+          uidNumber: 5004
+          gidNumber: 5004
+          homeDirectory: /home/alumne4
+          loginShell: /bin/bash
+          mail: alumne4@amsa.udl.cat
+
+          dn: uid=alumne5,ou=users,dc=amsa,dc=udl,dc=cat
+          objectClass: posixAccount
+          objectClass: shadowAccount
+          objectClass: inetOrgPerson
+          cn: David
+          sn: Lopez
+          uidNumber: 5005
+          gidNumber: 5005
+          homeDirectory: /home/alumne5
+          loginShell: /bin/bash
+          mail: alumne5@amsa.udl.cat
+
+          dn: uid=alumne6,ou=users,dc=amsa,dc=udl,dc=cat
+          objectClass: posixAccount
+          objectClass: shadowAccount
+          objectClass: inetOrgPerson
+          cn: Anna
+          sn: Gomez
+          uidNumber: 5006
+          gidNumber: 5006
+          homeDirectory: /home/alumne6
+          loginShell: /bin/bash
+          mail: alumne6@amsa.udl.cat
+
+          # Professors
+          dn: uid=professor1,ou=users,dc=amsa,dc=udl,dc=cat
+          objectClass: posixAccount
+          objectClass: shadowAccount
+          objectClass: inetOrgPerson
+          cn: Carles
+          sn: Roca
+          uidNumber: 6001
+          gidNumber: 6001
+          homeDirectory: /home/professor1
+          loginShell: /bin/bash
+          mail: professor1@amsa.udl.cat
+
+          dn: uid=professor2,ou=users,dc=amsa,dc=udl,dc=cat
+          objectClass: posixAccount
+          objectClass: shadowAccount
+          objectClass: inetOrgPerson
+          cn: Montserrat
+          sn: Puig
+          uidNumber: 6002
+          gidNumber: 6002
+          homeDirectory: /home/professor2
+          loginShell: /bin/bash
+          mail: professor2@amsa.udl.cat
+
+          # Admin
+          dn: uid=admin1,ou=users,dc=amsa,dc=udl,dc=cat
+          objectClass: posixAccount
+          objectClass: shadowAccount
+          objectClass: inetOrgPerson
+          cn: Administrator
+          sn: Sistema
+          uidNumber: 7001
+          gidNumber: 7001
+          homeDirectory: /home/admin1
+          loginShell: /bin/bash
+          mail: admin1@amsa.udl.cat
+
 
     - name: Carregar usuaris i grups a la base de dades LDAP
       command: ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/users.ldif
       register: ldapadd_users_result
       changed_when: true
+
+
+    
 
 
     - name: Obtenir hostname públic d'AWS
@@ -362,7 +508,6 @@
     - name: Assignar hostname a variable commonname per poder fer servir a sota al camp CN
       set_fact:
         commonname: "{{ ansible_ec2_public_hostname }}"
-
 
 
     - name: Mostrar hostname per debug
